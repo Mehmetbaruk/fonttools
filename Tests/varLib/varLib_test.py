@@ -1649,5 +1649,44 @@ def test_varlib_merge_GDEF_GlyphClassDef_beyond64k_divergent_masters():
     assert table.table.GlyphClassDef2.classDefs == {"g00001": 1, "g00002": 1, HI: 3}
 
 
+@pytest.mark.parametrize("mask_op", ["hintmask", "cntrmask"])
+def test_cff2_merge_pen_mismatched_masks_raises(mask_op):
+    from fontTools.varLib.cff import CFF2CharStringMergePen
+
+    commands = []
+    pen = CFF2CharStringMergePen(commands, "a", num_masters=2, master_idx=0)
+    for idx, mask in enumerate([b"\x80", b"\x00"]):
+        pen.restart(idx)
+        pen.add_hint("hstemhm", [0, 10])
+        pen.add_hintmask(mask_op, [mask])
+        pen.moveTo((0, 0))
+        pen.lineTo((100, 0))
+        pen.closePath()
+
+    var_model = VariationModel([{}, {"wght": 1.0}])
+    with pytest.raises(varLibErrors.VarLibMergeError):
+        pen.getCharString(var_model=var_model)
+
+
+@pytest.mark.parametrize("mask_op", ["hintmask", "cntrmask"])
+def test_cff2_merge_pen_matching_masks_succeeds(mask_op):
+    from fontTools.varLib.cff import CFF2CharStringMergePen
+
+    commands = []
+    pen = CFF2CharStringMergePen(commands, "a", num_masters=2, master_idx=0)
+    for idx in range(2):
+        pen.restart(idx)
+        pen.add_hint("hstemhm", [0, 10])
+        pen.add_hintmask(mask_op, [b"\x80"])
+        pen.moveTo((0, 0))
+        pen.lineTo((100 + idx * 20, 0))
+        pen.closePath()
+
+    var_model = VariationModel([{}, {"wght": 1.0}])
+    cs = pen.getCharString(var_model=var_model)
+    assert mask_op in cs.program
+    assert cs.program[cs.program.index(mask_op) + 1] == b"\x80"
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())

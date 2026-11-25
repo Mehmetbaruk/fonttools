@@ -590,12 +590,12 @@ class CFF2CharStringMergePen(T2CharStringPen):
             # masks are represented by two cmd's: first has only op names,
             # second has only args.
             if lastOp in ["hintmask", "cntrmask"]:
-                coord = list(cmd[1])
-                if not allEqual(coord):
+                coords = cmd[1]
+                if not all(allEqual(coord) for coord in coords):
                     raise VarLibMergeError(
                         "Hintmask values cannot differ between source fonts."
                     )
-                cmd[1] = [coord[0][0]]
+                cmd[1] = [coord[0] for coord in coords]
             else:
                 coords = cmd[1]
                 new_coords = []
